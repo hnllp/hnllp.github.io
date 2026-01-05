@@ -19,6 +19,7 @@
             padding: 20px;
             color: #333;
             overflow-x: hidden;
+            position: relative; /* 新增：为绝对定位的抽屉按钮提供定位上下文 */
         }
         .container {
             max-width: 1200px;
@@ -30,6 +31,7 @@
             backdrop-filter: blur(10px);
             position: relative;
             z-index: 1;
+            margin-top: 20px; /* 新增：避免被抽屉按钮遮挡 */
         }
         .header {
             text-align: center;
@@ -50,9 +52,9 @@
             text-align: center;
         }
 
-        /* 抽屉核心样式 */
+        /* 抽屉核心样式 - 修复部分 */
         .drawer-btn {
-            position: absolute;
+            position: fixed; /* 修改：从absolute改为fixed，确保始终可见 */
             top: 20px;
             left: 20px;
             width: 44px;
@@ -67,7 +69,7 @@
             justify-content: center;
             font-size: 1.2rem;
             box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
-            z-index: 10;
+            z-index: 9999; /* 提高z-index确保在最上层 */
             transition: all 0.3s ease;
         }
         .drawer-btn:hover {
@@ -91,7 +93,7 @@
             width: 100vw;
             height: 100vh;
             background: rgba(0, 0, 0, 0.5);
-            z-index: 9;
+            z-index: 9998; /* 调整z-index */
             display: none;
             opacity: 0;
             transition: opacity 0.3s ease;
@@ -109,7 +111,7 @@
             height: 100vh;
             background: white;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
-            z-index: 10;
+            z-index: 9999; /* 调整z-index */
             transform: translateX(-100%);
             transition: transform 0.3s ease-in-out;
             overflow-y: auto;
@@ -435,7 +437,7 @@
         @media (max-width: 768px) {
             .container {
                 padding: 15px;
-                margin-top: 60px;
+                margin-top: 70px; /* 增加顶部间距，避免被抽屉按钮遮挡 */
             }
             .header {
                 flex-direction: column;
@@ -642,7 +644,7 @@
         let sentenceEnd = 0;
         let isJumping = false;
         let loopCheckTimer = null;
-        let isDrawerOpen = false;
+        let isDrawerOpen = false; // 确保初始化为false
         
         // 新增：语速调节相关变量
         let playbackSpeed = 1;
@@ -742,14 +744,23 @@
             }
         }
 
-        // 4. 抽屉控制函数
+        // 4. 抽屉控制函数 - 修复逻辑
         function toggleDrawer() {
             isDrawerOpen = !isDrawerOpen;
-            els.lessonDrawer.classList.toggle('active', isDrawerOpen);
-            els.drawerMask.classList.toggle('active', isDrawerOpen);
-            els.drawerBtn.classList.toggle('active', isDrawerOpen);
-            els.drawerBtn.textContent = isDrawerOpen ? '✕' : '☰';
+            
+            // 确保DOM元素存在再操作
+            if (els.lessonDrawer) els.lessonDrawer.classList.toggle('active', isDrawerOpen);
+            if (els.drawerMask) els.drawerMask.classList.toggle('active', isDrawerOpen);
+            if (els.drawerBtn) {
+                els.drawerBtn.classList.toggle('active', isDrawerOpen);
+                els.drawerBtn.textContent = isDrawerOpen ? '✕' : '☰';
+            }
+            
+            // 控制页面滚动
             document.body.style.overflow = isDrawerOpen ? 'hidden' : 'auto';
+            
+            // 调试信息
+            console.log('抽屉状态:', isDrawerOpen);
         }
 
         // 5. 切换分册
@@ -1288,11 +1299,14 @@
             }
         }
 
-        // 19. 绑定事件
+        // 19. 绑定事件 - 确保DOM完全加载后绑定
         function bindEvents() {
-            // 抽屉事件
-            els.drawerBtn.onclick = toggleDrawer;
-            els.drawerMask.onclick = toggleDrawer;
+            // 抽屉事件 - 确保按钮存在
+            if (els.drawerBtn) {
+                els.drawerBtn.onclick = toggleDrawer;
+                console.log('抽屉按钮事件已绑定');
+            }
+            if (els.drawerMask) els.drawerMask.onclick = toggleDrawer;
             
             // 分册切换事件
             els.volumeTabs.forEach(tab => {
@@ -1430,25 +1444,31 @@
             window.addEventListener('beforeunload', saveProgress);
         }
 
-        // 20. 初始化
+        // 20. 初始化 - 确保DOM完全加载
         async function init() {
+            console.log('开始初始化播放器...');
+            
+            // 初始化课程列表（即使没有进度也显示）
+            initLessonList();
+            
             // 预加载ZIP包到内存
             await loadZipToMemory();
             
             // 恢复学习进度
             restoreProgress();
             
-            // 如果没有恢复到进度，初始化第一册课程列表
-            if (!localStorage.getItem('newConceptProgress')) {
-                initLessonList();
-            }
-            
             // 绑定所有事件
             bindEvents();
+            
+            console.log('播放器初始化完成');
         }
 
-        // 启动初始化
-        document.addEventListener('DOMContentLoaded', init);
+        // 确保DOM完全加载后启动初始化
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
     </script>
 </body>
 </html>
